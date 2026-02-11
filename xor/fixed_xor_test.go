@@ -78,3 +78,14 @@ func TestCrackKey(t *testing.T) {
 	cipher := decoded
 	crackRepeatingKeyXOR(cipher)
 }
+
+// challenge 7
+func TestAESDecrypt(t *testing.T) {
+	key := []byte("YELLOW SUBMARINE")
+	DecryptAESECB(key, "c7.txt")
+}
+
+// challenge 8
+func TestFindAESLine(t *testing.T) {
+	FindAESECBString("c8.txt")
+}
