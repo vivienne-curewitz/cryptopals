@@ -5,7 +5,7 @@ import (
 	"log"
 )
 
-func xorBytes(b1 []byte, b2 []byte) []byte {
+func XorBytes(b1 []byte, b2 []byte) []byte {
 	output := make([]byte, len(b1))
 	for i := range len(b1) {
 		output[i] = b1[i] ^ b2[i]
@@ -25,5 +25,5 @@ func xorHex(hexS1 string, hexS2 string) []byte {
 	if len(hexb1) != len(hexb2) {
 		log.Panic("Input length unequal")
 	}
-	return xorBytes(hexb1, hexb2)
+	return XorBytes(hexb1, hexb2)
 }

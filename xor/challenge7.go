@@ -35,7 +35,7 @@ func DecryptAESECB(key []byte, filename string) {
 	fmt.Printf("%s\n", decrypted)
 }
 
-func DecryptAESECBBytes(key []byte, ciphertext []byte) {
+func DecryptAESECBBytes(key []byte, ciphertext []byte) []byte {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		log.Fatal(err)
@@ -50,4 +50,5 @@ func DecryptAESECBBytes(key []byte, ciphertext []byte) {
 	}
 
 	fmt.Printf("%s\n", decrypted)
+	return decrypted
 }

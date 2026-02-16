@@ -34,12 +34,12 @@ func countSetBits(b1 []byte) int {
 }
 
 func editDistance(s1 string, s2 string) int {
-	xb := xorBytes([]byte(s1), []byte(s2))
+	xb := XorBytes([]byte(s1), []byte(s2))
 	return countSetBits(xb)
 }
 
 func editDistanceBytes(b1 []byte, b2 []byte) float64 {
-	xb := xorBytes(b1, b2)
+	xb := XorBytes(b1, b2)
 	return float64(countSetBits(xb))
 }
 
