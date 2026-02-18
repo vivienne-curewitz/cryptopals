@@ -27,7 +27,7 @@ func RandomEncrypt(plaintext []byte) ([]byte, int) {
 		// pad to length
 		delta := 16 - (len(to_encrypt) % 16)
 		to_encrypt = PadToLength(to_encrypt, len(to_encrypt)+delta)
-		return EncryptCB(key, to_encrypt), ECB
+		return EncryptECB(key, to_encrypt), ECB
 	} else {
 		return EncryptCBC(key, to_encrypt, make([]byte, 16)), CBC
 	}

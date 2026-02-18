@@ -6,8 +6,8 @@ import (
 	"log"
 )
 
-// old encrypt function
-func EncryptCB(key []byte, plaintext []byte) []byte {
+// old encrypt function ECB
+func EncryptECB(key []byte, plaintext []byte) []byte {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		log.Fatal(err)
@@ -21,6 +21,22 @@ func EncryptCB(key []byte, plaintext []byte) []byte {
 		block.Encrypt(encypted[i:i+blockSize], plaintext[i:i+blockSize])
 	}
 	return encypted
+}
+
+func DecryptECB(key []byte, cipher []byte) []byte {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// of course I picked the language where i have to do this manually
+	decrypted := make([]byte, len(cipher))
+	blockSize := block.BlockSize()
+
+	for i := 0; i < len(cipher); i += blockSize {
+		block.Decrypt(decrypted[i:i+blockSize], cipher[i:i+blockSize])
+	}
+	return decrypted
 }
 
 // new block encrypt
