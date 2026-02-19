@@ -90,3 +90,22 @@ func DecryptCBC(key []byte, ciphertext []byte, iv []byte) []byte {
 	}
 	return decrypted
 }
+
+func EncryptCBC_NP(key []byte, plaintext []byte, iv []byte) []byte {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	encypted := make([]byte, len(plaintext))
+	blockSize := block.BlockSize()
+	// first block with iv
+	xor_enc := xor.XorBytes(iv, plaintext[0:blockSize])
+	block.Encrypt(encypted[:blockSize], xor_enc)
+	// rest of blocks
+	for i := blockSize; i < len(plaintext); i += blockSize {
+		xor_enc := xor.XorBytes(encypted[i-blockSize:i], plaintext[i:i+blockSize])
+		block.Encrypt(encypted[i:i+blockSize], xor_enc)
+	}
+	return encypted
+}

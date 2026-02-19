@@ -70,12 +70,12 @@ func estimateKeySize(cipher []byte) int {
 	return ks
 }
 
-func cipherTranspose(cipher []byte, keysize int) [][]byte {
+func CipherTranspose(cipher []byte, keysize int) [][]byte {
 	// num_blocks := int(math.Ceil(float64(len(cipher)) / float64(keysize)))
 	num_blocks := len(cipher) / keysize
 	blocks := make([][]byte, num_blocks)
 	for i := 0; i < len(cipher); i += keysize {
-		if i+keysize < len(cipher) {
+		if i+keysize <= len(cipher) {
 			blocks[i/keysize] = cipher[i : i+keysize]
 		} // } else { // I think I can get away with skipping the last block
 		// 	blocks[i] = append(cipher[i:], make([]byte, i+keysize-len(cipher))...)
@@ -84,6 +84,7 @@ func cipherTranspose(cipher []byte, keysize int) [][]byte {
 	transpose := make([][]byte, keysize)
 	for i := range keysize {
 		transpose[i] = make([]byte, num_blocks)
+		// copy(transpose[i], blocks[j][i])
 		for j := range num_blocks {
 			transpose[i][j] = blocks[j][i]
 		}
@@ -91,7 +92,7 @@ func cipherTranspose(cipher []byte, keysize int) [][]byte {
 	return transpose
 }
 
-func solveBlocks(transpose [][]byte) []byte {
+func SolveBlocks(transpose [][]byte) []byte {
 	likelyKeys := make([]byte, len(transpose))
 	for i, block := range transpose {
 		key, _, _ := decryptXORInputBytes(block)
@@ -102,7 +103,7 @@ func solveBlocks(transpose [][]byte) []byte {
 
 func crackRepeatingKeyXOR(cipher []byte) {
 	keysize := estimateKeySize(cipher)
-	transpose := cipherTranspose(cipher, keysize)
-	likelyKeys := solveBlocks(transpose)
+	transpose := CipherTranspose(cipher, keysize)
+	likelyKeys := SolveBlocks(transpose)
 	log.Printf("Likely Key: %s\n", string(likelyKeys))
 }
