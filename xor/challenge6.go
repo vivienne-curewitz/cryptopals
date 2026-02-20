@@ -71,7 +71,6 @@ func estimateKeySize(cipher []byte) int {
 }
 
 func CipherTranspose(cipher []byte, keysize int) [][]byte {
-	// num_blocks := int(math.Ceil(float64(len(cipher)) / float64(keysize)))
 	num_blocks := len(cipher) / keysize
 	blocks := make([][]byte, num_blocks)
 	for i := 0; i < len(cipher); i += keysize {

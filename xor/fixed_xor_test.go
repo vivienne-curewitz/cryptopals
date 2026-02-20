@@ -11,6 +11,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestBase64Encode(t *testing.T) {
+	input, _ := hex.DecodeString("49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d")
+	dst := make([]byte, 4*len(input)/3)
+	EncodeB64(dst, input)
+	expected := "SSdtIGtpbGxpbmcgeW91ciBicmFpbiBsaWtlIGEgcG9pc29ub3VzIG11c2hyb29t"
+	output := string(dst)
+	assert.Equal(t, expected, output)
+}
+
 // challenge 2
 func TestFixedXor(t *testing.T) {
 	s1 := "1c0111001f010100061a024b53535009181c"

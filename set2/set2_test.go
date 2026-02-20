@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// challenge 9
 func TestPadToLength(t *testing.T) {
 	input := []byte("YELLOW SUBMARINE")
 	output := PadToLength(input, 20)
