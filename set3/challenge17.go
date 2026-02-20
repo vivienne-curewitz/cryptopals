@@ -6,10 +6,12 @@ import (
 	"cryptopals/xor"
 	"encoding/base64"
 	"log"
-	"math/big"
+	mrnd "math/rand"
+	"time"
 )
 
-// block 03 (4th) works
+// block 03 (3rd) works
+// actually I think outcome is dependent on key randomization
 var blocks = []string{
 	"MDAwMDAwTm93IHRoYXQgdGhlIHBhcnR5IGlzIGp1bXBpbmc=",
 	"MDAwMDAxV2l0aCB0aGUgYmFzcyBraWNrZWQgaW4gYW5kIHRoZSBWZWdhJ3MgYXJlIHB1bXBpbic=",
@@ -30,18 +32,16 @@ func getKey() []byte {
 }
 
 func encryptRandomBlock(key []byte) ([]byte, string) {
-	// source := mrnd.NewSource(time.Now().UnixNano())
-	// r := mrnd.New(source)
+	source := mrnd.NewSource(time.Now().UnixNano())
+	r := mrnd.New(source)
 
-	// index := r.Intn(len(blocks))
-	nBig, err := rand.Int(rand.Reader, big.NewInt(int64(len(blocks))))
-	if err != nil {
-		panic(err) // Should not happen in normal OS environments
-	}
-	index := int(nBig.Int64())
-	// index := mrnd.Intn(len(blocks))
-	// index = 9
-	// estr := []byte(blocks[index])
+	index := r.Intn(len(blocks))
+	// nBig, err := rand.Int(rand.Reader, big.NewInt(int64(len(blocks))))
+	// if err != nil {
+	// panic(err) // Should not happen in normal OS environments
+	// }
+	// index := int(nBig.Int64())
+	// index = 3
 	decoded, _ := base64.StdEncoding.DecodeString(blocks[index])
 	padded := set2.PKCS7Padding(decoded, 16)
 	cipher := set2.EncryptCBC_NP(key, padded, make([]byte, 16))
@@ -95,6 +95,7 @@ func getBlock(key []byte, current []byte, prev []byte) []byte {
 
 func c17_attack() (string, string) {
 	key := getKey()
+	// key := []byte("YELLOW SUBMARINE")
 	cipher, answer := encryptRandomBlock(key)
 	block_size := len(key)
 	num_blocks := len(cipher) / block_size

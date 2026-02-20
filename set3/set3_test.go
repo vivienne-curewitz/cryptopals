@@ -7,6 +7,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestXorIdentity(t *testing.T) {
+	const b1 byte = 0xA2
+	for i := range 256 {
+		if byte(i)^b1 == 0x01 {
+			assert.Equal(t, b1, byte(i)^0x01)
+			log.Printf("Inverse is %b\n", byte(i))
+		}
+	}
+}
+
 func TestC17(t *testing.T) {
 	log.Println("Running c17 test")
 	results, answer := c17_attack()
