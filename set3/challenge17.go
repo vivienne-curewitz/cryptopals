@@ -9,6 +9,7 @@ import (
 	"math/big"
 )
 
+// block 03 (4th) works
 var blocks = []string{
 	"MDAwMDAwTm93IHRoYXQgdGhlIHBhcnR5IGlzIGp1bXBpbmc=",
 	"MDAwMDAxV2l0aCB0aGUgYmFzcyBraWNrZWQgaW4gYW5kIHRoZSBWZWdhJ3MgYXJlIHB1bXBpbic=",
@@ -28,7 +29,7 @@ func getKey() []byte {
 	return key
 }
 
-func encryptRandomBlock_old(key []byte) ([]byte, string) {
+func encryptRandomBlock(key []byte) ([]byte, string) {
 	// source := mrnd.NewSource(time.Now().UnixNano())
 	// r := mrnd.New(source)
 
@@ -56,7 +57,7 @@ func decryptOracle(key []byte, cipher []byte) bool {
 	return true
 }
 
-func getBlock_old(key []byte, current []byte, prev []byte) []byte {
+func getBlock(key []byte, current []byte, prev []byte) []byte {
 	// modifed prev to get current to return true
 	var i int
 	index := 15
@@ -92,7 +93,7 @@ func getBlock_old(key []byte, current []byte, prev []byte) []byte {
 	return plain_block
 }
 
-func c17_attack_old() (string, string) {
+func c17_attack() (string, string) {
 	key := getKey()
 	cipher, answer := encryptRandomBlock(key)
 	block_size := len(key)
@@ -119,96 +120,4 @@ func c17_attack_old() (string, string) {
 		// results = set2.PKCS7Unpadding(results)
 	}
 	return string(results), answer
-}
-
-// retry
-
-func encryptRandomBlock(key []byte) ([]byte, string) {
-	nBig, _ := rand.Int(rand.Reader, big.NewInt(int64(len(blocks))))
-	index := int(nBig.Int64())
-
-	// FIX: Decode the Base64 first!
-	decoded, _ := base64.StdEncoding.DecodeString(blocks[index])
-
-	padded := set2.PKCS7Padding(decoded, 16)
-	// Using a Zero-IV for simplicity as per your current setup
-	cipher := set2.EncryptCBC_NP(key, padded, make([]byte, 16))
-	return cipher, blocks[index]
-}
-
-func getBlock(key []byte, current []byte, prev []byte) []byte {
-	// Create a local working copy to avoid any side effects
-	workingPrev := make([]byte, 16)
-	copy(workingPrev, prev)
-
-	intermediate_block := make([]byte, 16)
-
-	for index := 15; index >= 0; index-- {
-		padding_target := byte(16 - index)
-
-		for i := 0; i < 256; i++ {
-			workingPrev[index] = byte(i)
-
-			// append is safe here as it will allocate a new backing array
-			if decryptOracle(key, append(workingPrev, current...)) {
-				// Special check for the last byte to avoid 0x02 0x02 false positives
-				if index == 15 {
-					workingPrev[14] ^= 0x01
-					isStillValid := decryptOracle(key, append(workingPrev, current...))
-					workingPrev[14] ^= 0x01 // ALWAYS restore the bit
-
-					if !isStillValid {
-						continue // It was a false positive, keep searching
-					}
-				}
-
-				// Calculate intermediate byte
-				intermediate_block[index] = workingPrev[index] ^ padding_target
-
-				// Prepare the workingPrev for the next byte (index - 1)
-				// We need all recovered bytes to result in (padding_target + 1)
-				for j := index; j < 16; j++ {
-					workingPrev[j] = intermediate_block[j] ^ (padding_target + 1)
-				}
-				break
-			}
-		}
-	}
-
-	// Final XOR with the ORIGINAL previous ciphertext block
-	return xor.XorBytes(intermediate_block, prev)
-}
-
-func c17_attack() (string, string) {
-	key := getKey()
-	cipher, answerB64 := encryptRandomBlock(key)
-
-	// Decode answer so we can compare the actual plaintext
-	decodedAnswer, _ := base64.StdEncoding.DecodeString(answerB64)
-
-	block_size := 16
-	num_blocks := len(cipher) / block_size
-	results := make([]byte, 0)
-
-	for block := 0; block < num_blocks; block++ {
-		var prev []byte
-		if block == 0 {
-			prev = make([]byte, 16)
-		} else {
-			prev = cipher[(block-1)*16 : block*16]
-		}
-
-		current := cipher[block*16 : (block+1)*16]
-		plain_block := getBlock(key, current, prev)
-		results = append(results, plain_block...)
-	}
-
-	// Finally, unpad the whole result
-	unpadded, err := set2.PKCS7UnpaddingErr(results)
-	if err != nil {
-		log.Printf("Final unpadding failed: %v", err)
-		return string(results), string(decodedAnswer)
-	}
-
-	return string(unpadded), string(decodedAnswer)
 }
