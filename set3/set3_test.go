@@ -17,6 +17,13 @@ func TestXorIdentity(t *testing.T) {
 	}
 }
 
+func TestByteConversion(t *testing.T) {
+	i := 253
+	bi := byte(i)
+	const expected byte = 0xfd
+	assert.Equal(t, expected, bi)
+}
+
 func TestC17(t *testing.T) {
 	log.Println("Running c17 test")
 	results, answer := c17_attack()

@@ -70,11 +70,11 @@ func getBlock(key []byte, current []byte, prev []byte) []byte {
 		for i = 0; i < 256; i += 1 {
 			prev[index] = byte(i)
 			if decryptOracle(key, append(prev, ocurrent...)) {
-				if index == 15 {
-					// Flip the byte next to it to break accidental 0x02 0x02 padding
-					prev[14] ^= 0x01
+				if index > 0 {
+					// Flip the byte next to it to break accidental 0x02 0x02 (or whatever) padding
+					prev[index-1] ^= byte(16 - index)
 					valid := decryptOracle(key, append(prev, ocurrent...))
-					prev[14] ^= 0x01
+					prev[index-1] ^= byte(16 - index)
 					if !valid {
 						continue // It was a false positive, keep searching
 					}
