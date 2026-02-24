@@ -44,7 +44,7 @@ func make_key_map(key []byte) map[byte]int {
 	return key_m
 }
 
-func substitution_cypher(key []byte, ciphertext []byte) []byte {
+func Substitution_cypher(key []byte, ciphertext []byte) []byte {
 	plain := make([]byte, len(ciphertext))
 	key_m := make_key_map(key)
 	for i, c_letter := range ciphertext {
@@ -98,8 +98,21 @@ var commonBigrams = map[string]float64{
 }
 
 var commonTrigrams = map[string]float64{
-	"the": 10.0, "and": 9.0, "tha": 9.5, "ent": 8.5, "ing": 8.0, "ion": 7.5,
-	"tio": 7.0, "for": 6.5, "nde": 6.0, "has": 5.5, "nce": 5.0,
+	"THE": 10.0, "AND": 9.0, "THA": 9.5, "ENT": 8.5, "ING": 8.0, "ION": 7.5,
+	"TIO": 7.0, "FOR": 6.5, "NDE": 6.0, "HAS": 5.5, "NCE": 5.0,
+}
+
+var commonQuadgrams = map[string]float64{
+	"TION": 0.31,
+	"NTHE": 0.2,
+	"THER": 0.24,
+	"THAT": 0.21,
+	"OFTH": 0.19,
+	"FTHE": 0.19,
+	"THES": 0.18,
+	"WITH": 0.18,
+	"INTH": 0.17,
+	"ATIO": 0.17,
 }
 
 // scoreText evaluates how "English-like" a string is.
@@ -120,6 +133,17 @@ func score_text_trigrams(text string) float64 {
 		bigram := text[i : i+3]
 		if weight, exists := commonTrigrams[bigram]; exists {
 			score += weight
+		}
+	}
+	return score
+}
+
+func score_text_quadgrams(text string) float64 {
+	var score float64
+	for i := 0; i < len(text)-3; i++ {
+		bigram := text[i : i+4]
+		if weight, exists := commonQuadgrams[bigram]; exists {
+			score += weight * 100
 		}
 	}
 	return score
@@ -172,14 +196,14 @@ func Guess_key(ciphertext []byte, prev_key []byte) (string, string) {
 	// })
 
 	// 2. Score the initial random key
-	currentPlaintext := substitution_cypher(currentKey, ciphertext)
+	currentPlaintext := Substitution_cypher(currentKey, ciphertext)
 	currentScore := score_text_trigrams(string(currentPlaintext))
 
 	// 3. The Hill Climbing Loop
-	iterations := 1000000
+	iterations := 500000
 	for i := 0; i < iterations; i++ {
-		if i%10000 == 0 {
-			fmt.Printf("\r%.2f%%", float64(i)/float64(iterations)*100)
+		if i%1000 == 0 {
+			fmt.Printf("\r%.2f%% -- Score: %f", float64(i)/float64(iterations)*100, currentScore)
 		}
 		// Pick two random positions to swap in the key
 		pos1 := rand.IntN(26)
@@ -191,11 +215,11 @@ func Guess_key(ciphertext []byte, prev_key []byte) (string, string) {
 		newKey[pos1], newKey[pos2] = newKey[pos2], newKey[pos1]
 
 		// Decrypt and score with the mutated key
-		newPlaintext := substitution_cypher(newKey, ciphertext)
-		newScore := score_text_trigrams(string(newPlaintext))
+		newPlaintext := Substitution_cypher(newKey, ciphertext)
+		newScore := score_text_trigrams(string(newPlaintext)) + score_text_bigrams(string(newPlaintext)) + score_text_quadgrams(string(newPlaintext))
 
 		// If the score improves, keep the new key!
-		if newScore > currentScore {
+		if newScore >= currentScore {
 			currentScore = newScore
 			currentKey = newKey
 			currentPlaintext = newPlaintext
