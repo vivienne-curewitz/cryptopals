@@ -1,13 +1,40 @@
 package cryptanalysis
 
 import (
+	"fmt"
 	"log"
-	oldrand "math/rand"
 	"math/rand/v2"
+	"sort"
 )
 
 const capA = 65
 const lowerA = 97
+
+var letterFrequencies = map[byte]float64{
+	'a': .0817, 'b': .0149, 'c': .0278, 'd': .0425, 'e': .1270,
+	'f': .0223, 'g': .0202, 'h': .0609, 'i': .0697, 'j': .0015,
+	'k': .0077, 'l': .0403, 'm': .0241, 'n': .0675, 'o': .0751,
+	'p': .0193, 'q': .0010, 'r': .0599, 's': .0633, 't': .0906,
+	'u': .0276, 'v': .0098, 'w': .0236, 'x': .0015, 'y': .0197,
+	'z': .0007,
+}
+
+var bigram_frequencies = []string{
+	"th", "of", "io",
+	"he", "ed", "le",
+	"in", "is", "ve",
+	"er", "it", "co",
+	"an", "al", "me",
+	"re", "ar", "de",
+	"on", "st", "hi",
+	"at", "to", "ri",
+	"en", "nt", "ro",
+	"nd", "ng", "ic",
+	"ti", "se", "ne",
+	"es", "ha", "ea",
+	"or", "as", "ra",
+	"te", "ou", "ce",
+}
 
 func make_key_map(key []byte) map[byte]int {
 	key_m := make(map[byte]int)
@@ -17,7 +44,7 @@ func make_key_map(key []byte) map[byte]int {
 	return key_m
 }
 
-func substitution_cypher(key []byte, ciphertext []byte) {
+func substitution_cypher(key []byte, ciphertext []byte) []byte {
 	plain := make([]byte, len(ciphertext))
 	key_m := make_key_map(key)
 	for i, c_letter := range ciphertext {
@@ -27,27 +54,8 @@ func substitution_cypher(key []byte, ciphertext []byte) {
 		}
 		plain[i] = byte(kind + capA)
 	}
-	log.Printf("Plain text: %s\n", string(plain))
-}
-
-func polymorphic_substitution(key []byte, ciphertext []byte, seed uint64) {
-	plain := make([]byte, len(ciphertext))
-
-	source := rand.NewPCG(seed, 0)
-	r := rand.New(source)
-	key_m := make_key_map(key)
-	oldrand.Seed(int64(seed))
-	for i, b := range ciphertext {
-		index := key_m[b]
-		rI := r.Uint64() % uint64(len(key))
-		// rI := oldrand.Uint64() % uint64(len(key))
-		nIndex := index - int(rI)
-		if nIndex < 0 {
-			nIndex += 26
-		}
-		plain[i] = key[nIndex]
-	}
-	log.Printf("Plain text: %s\n", string(plain))
+	// log.Printf("Plain text: %s\n", string(plain))
+	return plain
 }
 
 func reverse_vigenere(key []byte, ciphertext []byte) {
@@ -61,4 +69,138 @@ func reverse_vigenere(key []byte, ciphertext []byte) {
 		plain[i] = pb
 	}
 	log.Printf("Plain text: %s\n", string(plain))
+}
+
+func generateLetterFrequencies(cipher []byte) map[byte]float64 {
+	frequency_map := make(map[byte]float64)
+	for _, b := range cipher {
+		count, exists := frequency_map[b]
+		if !exists {
+			frequency_map[b] = 1
+		} else {
+			frequency_map[b] = count + 1
+		}
+	}
+	for k, v := range frequency_map {
+		frequency_map[k] = v / float64(len(cipher))
+	}
+	log.Printf("Frequency map: %v\n", frequency_map)
+	return frequency_map
+}
+
+const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+// A tiny subset of common English bigrams and their relative weights.
+// For a production cracker, you would load thousands of quadgrams from a file.
+var commonBigrams = map[string]float64{
+	"TH": 10.0, "HE": 9.5, "IN": 9.0, "ER": 8.5, "AN": 8.0,
+	"RE": 7.5, "ND": 7.0, "AT": 6.5, "ON": 6.0, "NT": 5.5,
+}
+
+var commonTrigrams = map[string]float64{
+	"the": 10.0, "and": 9.0, "tha": 9.5, "ent": 8.5, "ing": 8.0, "ion": 7.5,
+	"tio": 7.0, "for": 6.5, "nde": 6.0, "has": 5.5, "nce": 5.0,
+}
+
+// scoreText evaluates how "English-like" a string is.
+func score_text_bigrams(text string) float64 {
+	var score float64
+	for i := 0; i < len(text)-1; i++ {
+		bigram := text[i : i+2]
+		if weight, exists := commonBigrams[bigram]; exists {
+			score += weight
+		}
+	}
+	return score
+}
+
+func score_text_trigrams(text string) float64 {
+	var score float64
+	for i := 0; i < len(text)-2; i++ {
+		bigram := text[i : i+3]
+		if weight, exists := commonTrigrams[bigram]; exists {
+			score += weight
+		}
+	}
+	return score
+}
+
+func SortMapByValueDesc(m map[byte]float64) []byte {
+	// Step 1: create a slice of key-value pairs
+	type kv struct {
+		Key byte
+		Val float64
+	}
+	pairs := make([]kv, 0, len(m))
+	for k, v := range m {
+		pairs = append(pairs, kv{k, v})
+	}
+
+	// Step 2: sort the slice by value descending
+	sort.Slice(pairs, func(i, j int) bool {
+		return pairs[i].Val > pairs[j].Val // > for descending
+	})
+
+	// Step 3: extract the keys in sorted order
+	keys := make([]byte, len(pairs))
+	for i, p := range pairs {
+		keys[i] = p.Key
+	}
+	return keys
+}
+
+// bug somewhere here
+// GuessKey runs the hill climbing algorithm to find the best substitution key.
+func Guess_key(ciphertext []byte, prev_key []byte) (string, string) {
+	currentKey := make([]byte, 26)
+	if prev_key == nil {
+		frequency := generateLetterFrequencies(ciphertext)
+		f_list := SortMapByValueDesc(frequency)
+		l_list := SortMapByValueDesc(letterFrequencies)
+		for i, b := range f_list {
+			letter := l_list[i]
+			index := (letter - 97) % 26 // 97 - 123 lowercase letters
+			currentKey[index] = b
+		}
+	} else {
+		currentKey = prev_key
+	}
+	// 1. Start with a random key (shuffled alphabet)
+	// currentKey := []byte(alphabet)
+	// rand.Shuffle(len(currentKey), func(i, j int) {
+	// 	currentKey[i], currentKey[j] = currentKey[j], currentKey[i]
+	// })
+
+	// 2. Score the initial random key
+	currentPlaintext := substitution_cypher(currentKey, ciphertext)
+	currentScore := score_text_trigrams(string(currentPlaintext))
+
+	// 3. The Hill Climbing Loop
+	iterations := 1000000
+	for i := 0; i < iterations; i++ {
+		if i%10000 == 0 {
+			fmt.Printf("\r%.2f%%", float64(i)/float64(iterations)*100)
+		}
+		// Pick two random positions to swap in the key
+		pos1 := rand.IntN(26)
+		pos2 := rand.IntN(26)
+
+		// Create a mutated key
+		newKey := make([]byte, 26)
+		copy(newKey, currentKey)
+		newKey[pos1], newKey[pos2] = newKey[pos2], newKey[pos1]
+
+		// Decrypt and score with the mutated key
+		newPlaintext := substitution_cypher(newKey, ciphertext)
+		newScore := score_text_trigrams(string(newPlaintext))
+
+		// If the score improves, keep the new key!
+		if newScore > currentScore {
+			currentScore = newScore
+			currentKey = newKey
+			currentPlaintext = newPlaintext
+		}
+	}
+
+	return string(currentKey), string(currentPlaintext)
 }
