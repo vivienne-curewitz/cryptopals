@@ -23,6 +23,14 @@ func scoreText(text string) float64 {
 	return score
 }
 
+func ScoreText(text string) float64 {
+	var score float64
+	for _, r := range text {
+		score += letterFrequencies[unicode.ToLower(r)]
+	}
+	return score
+}
+
 func decryptXORInput(hexStr string) (uint8, float64, string) {
 	hb, err := hex.DecodeString(hexStr)
 	if err != nil {

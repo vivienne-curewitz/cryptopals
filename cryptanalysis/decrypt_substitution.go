@@ -1,6 +1,7 @@
 package cryptanalysis
 
 import (
+	"cryptopals/xor"
 	"fmt"
 	"log"
 	"math/rand/v2"
@@ -58,7 +59,7 @@ func Substitution_cypher(key []byte, ciphertext []byte) []byte {
 	return plain
 }
 
-func reverse_vigenere(key []byte, ciphertext []byte) {
+func Reverse_vigenere(key []byte, ciphertext []byte) []byte {
 	plain := make([]byte, len(ciphertext))
 	for i, b := range ciphertext {
 		shift := key[i%len(key)] - capA
@@ -68,7 +69,8 @@ func reverse_vigenere(key []byte, ciphertext []byte) {
 		}
 		plain[i] = pb
 	}
-	log.Printf("Plain text: %s\n", string(plain))
+	// log.Printf("Plain text: %s\n", string(plain))
+	return plain
 }
 
 func generateLetterFrequencies(cipher []byte) map[byte]float64 {
@@ -200,7 +202,7 @@ func Guess_key(ciphertext []byte, prev_key []byte) (string, string) {
 	currentScore := score_text_trigrams(string(currentPlaintext))
 
 	// 3. The Hill Climbing Loop
-	iterations := 500000
+	iterations := 100000
 	for i := 0; i < iterations; i++ {
 		if i%1000 == 0 {
 			fmt.Printf("\r%.2f%% -- Score: %f", float64(i)/float64(iterations)*100, currentScore)
@@ -216,6 +218,107 @@ func Guess_key(ciphertext []byte, prev_key []byte) (string, string) {
 
 		// Decrypt and score with the mutated key
 		newPlaintext := Substitution_cypher(newKey, ciphertext)
+		newScore := score_text_trigrams(string(newPlaintext)) + score_text_bigrams(string(newPlaintext)) + score_text_quadgrams(string(newPlaintext))
+
+		// If the score improves, keep the new key!
+		if newScore >= currentScore {
+			currentScore = newScore
+			currentKey = newKey
+			currentPlaintext = newPlaintext
+		}
+	}
+
+	return string(currentKey), string(currentPlaintext)
+}
+
+// vigenere cracks below
+func Kasiski_search(cipher []byte) int {
+	// let's assume min key length is 3
+	best_length := 0
+	best_score := 0
+	for i := 3; i < 15; i += 1 {
+		shifted := make([]byte, len(cipher)+i)
+		copy(shifted[i:], cipher)
+		score := 0
+		for j := range len(cipher) {
+			if cipher[j] == shifted[j] {
+				score += 1
+			}
+		}
+		if score > best_score {
+			best_score = score
+			best_length = i
+		}
+	}
+	return best_length
+}
+
+func Vigenere_key_search(cipher []byte, key_len int) []byte {
+	buffer_len := len(cipher)/key_len + 1
+	buffers := make([][]byte, key_len)
+	for i := range key_len {
+		buffers[i] = make([]byte, buffer_len)
+	}
+	for i := range len(cipher) {
+		buffers[i%key_len][i/key_len] = cipher[i]
+	}
+	key := make([]byte, key_len)
+	for i, buf := range buffers {
+		shift := search_shift(buf)
+		key[i] = byte(shift + capA)
+	}
+	return key
+}
+
+func shift_text(buffer []byte, shift int) []byte {
+	retval := make([]byte, len(buffer))
+	for i, b := range buffer {
+		shifted := int(b) - shift
+		if shifted < 0 {
+			shifted += 26
+		}
+		retval[i] = byte(shifted)
+	}
+	return retval
+}
+
+func search_shift(buffer []byte) int {
+	best_score := 0.0
+	best_shift := 0
+	for i := range 26 {
+		score := xor.ScoreText(string(shift_text(buffer, i)))
+		if score > best_score {
+			best_score = score
+			best_shift = i
+		}
+	}
+	return best_shift
+}
+
+// bug somewhere here
+// GuessKey runs the hill climbing algorithm to find the best substitution key.
+func Guess_key_vignere(ciphertext []byte, prev_key []byte) (string, string) {
+	currentKey := prev_key
+	currentPlaintext := Reverse_vigenere(currentKey, ciphertext)
+	currentScore := score_text_trigrams(string(currentPlaintext)) + score_text_bigrams(string(currentPlaintext)) + score_text_quadgrams(string(currentPlaintext))
+
+	// 3. The Hill Climbing Loop
+	iterations := 100000
+	for i := 0; i < iterations; i++ {
+		if i%1000 == 0 {
+			fmt.Printf("\r%.2f%% -- Score: %f", float64(i)/float64(iterations)*100, currentScore)
+		}
+		// Pick two random positions to swap in the key
+		pos1 := rand.IntN(len(currentKey))
+		pos2 := rand.IntN(len(currentKey))
+
+		// Create a mutated key
+		newKey := make([]byte, len(currentKey))
+		copy(newKey, currentKey)
+		newKey[pos1], newKey[pos2] = newKey[pos2], newKey[pos1]
+
+		// Decrypt and score with the mutated key
+		newPlaintext := Reverse_vigenere(newKey, ciphertext)
 		newScore := score_text_trigrams(string(newPlaintext)) + score_text_bigrams(string(newPlaintext)) + score_text_quadgrams(string(newPlaintext))
 
 		// If the score improves, keep the new key!
