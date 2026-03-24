@@ -33,17 +33,19 @@ func TestGuess_Key(t *testing.T) {
 }
 
 func TestKasisnskiSearc(t *testing.T) {
-	cipher, _ := os.ReadFile("ncypher1.txt")
+	cipher, _ := os.ReadFile("foundations_hw1.txt")
 	key_len := Kasiski_search(cipher)
 	log.Printf("Key Length: %d\n", key_len)
 }
 
 func TestVigenereCrack(t *testing.T) {
-	cipher, _ := os.ReadFile("ncypher1.txt")
+	cipher, _ := os.ReadFile("foundations_hw1.txt")
 	key_len := Kasiski_search(cipher)
 	log.Printf("Key Length: %d\n", key_len)
 	key := Vigenere_key_search(cipher, key_len)
 	log.Printf("Key: %s\n", string(key))
+	plaintext := Reverse_vigenere(key, cipher)
+	log.Printf("Plaintext: %s\n", plaintext)
 }
 
 func TestVigenereCrack1(t *testing.T) {
