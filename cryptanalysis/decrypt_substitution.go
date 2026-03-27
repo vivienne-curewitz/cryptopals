@@ -1,9 +1,9 @@
 package cryptanalysis
 
 import (
+	"bytes"
 	"cryptopals/xor"
 	"fmt"
-	"log"
 	"math/rand/v2"
 	"sort"
 )
@@ -59,6 +59,19 @@ func Substitution_cypher(key []byte, ciphertext []byte) []byte {
 	return plain
 }
 
+func Encrypt_Vigenere(key []byte, plain []byte) []byte {
+	cipher := make([]byte, len(plain))
+	for i, b := range plain {
+		shift := key[i%len(key)] - capA
+		pb := b + shift
+		if pb > byte('Z') {
+			pb -= 26
+		}
+		cipher[i] = pb
+	}
+	return cipher
+}
+
 func Reverse_vigenere(key []byte, ciphertext []byte) []byte {
 	plain := make([]byte, len(ciphertext))
 	for i, b := range ciphertext {
@@ -86,7 +99,7 @@ func generateLetterFrequencies(cipher []byte) map[byte]float64 {
 	for k, v := range frequency_map {
 		frequency_map[k] = v / float64(len(cipher))
 	}
-	log.Printf("Frequency map: %v\n", frequency_map)
+	// log.Printf("Frequency map: %v\n", frequency_map)
 	return frequency_map
 }
 
@@ -175,9 +188,13 @@ func SortMapByValueDesc(m map[byte]float64) []byte {
 	return keys
 }
 
+func remove_z(text []byte) []byte {
+	return bytes.ReplaceAll(text, []byte{'Z'}, []byte{})
+}
+
 // bug somewhere here
 // GuessKey runs the hill climbing algorithm to find the best substitution key.
-func Guess_key(ciphertext []byte, prev_key []byte) (string, string) {
+func Guess_key(ciphertext []byte, prev_key []byte) (string, float64) {
 	currentKey := make([]byte, 26)
 	if prev_key == nil {
 		frequency := generateLetterFrequencies(ciphertext)
@@ -191,7 +208,6 @@ func Guess_key(ciphertext []byte, prev_key []byte) (string, string) {
 	} else {
 		currentKey = prev_key
 	}
-	// 1. Start with a random key (shuffled alphabet)
 	// currentKey := []byte(alphabet)
 	// rand.Shuffle(len(currentKey), func(i, j int) {
 	// 	currentKey[i], currentKey[j] = currentKey[j], currentKey[i]
@@ -199,14 +215,17 @@ func Guess_key(ciphertext []byte, prev_key []byte) (string, string) {
 
 	// 2. Score the initial random key
 	currentPlaintext := Substitution_cypher(currentKey, ciphertext)
+	// for foundations
+	currentPlaintext = remove_z(currentPlaintext)
 	currentScore := score_text_trigrams(string(currentPlaintext))
+	// fm := normalize_freq_data(false)
 
 	// 3. The Hill Climbing Loop
-	iterations := 100000
+	iterations := 10000
 	for i := 0; i < iterations; i++ {
-		if i%1000 == 0 {
-			fmt.Printf("\r%.2f%% -- Score: %f", float64(i)/float64(iterations)*100, currentScore)
-		}
+		// if i%1000 == 0 {
+		// 	fmt.Printf("\r%.2f%% -- Score: %f", float64(i)/float64(iterations)*100, currentScore)
+		// }
 		// Pick two random positions to swap in the key
 		pos1 := rand.IntN(26)
 		pos2 := rand.IntN(26)
@@ -218,7 +237,9 @@ func Guess_key(ciphertext []byte, prev_key []byte) (string, string) {
 
 		// Decrypt and score with the mutated key
 		newPlaintext := Substitution_cypher(newKey, ciphertext)
-		newScore := score_text_trigrams(string(newPlaintext)) + score_text_bigrams(string(newPlaintext)) + score_text_quadgrams(string(newPlaintext))
+		//foundations
+		newPlaintext = remove_z(newPlaintext)
+		newScore := score_text_quadgrams(string(newPlaintext)) + score_text_trigrams(string(newPlaintext)) + score_text_bigrams(string(newPlaintext)) //+ 1.0/score_text_freq(fm, newPlaintext)
 
 		// If the score improves, keep the new key!
 		if newScore >= currentScore {
@@ -228,7 +249,7 @@ func Guess_key(ciphertext []byte, prev_key []byte) (string, string) {
 		}
 	}
 
-	return string(currentKey), string(currentPlaintext)
+	return string(currentKey), currentScore
 }
 
 // vigenere cracks below

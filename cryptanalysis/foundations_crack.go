@@ -1,7 +1,10 @@
 package cryptanalysis
 
 import (
+	"log"
 	"math"
+	"math/rand/v2"
+	"slices"
 	"sort"
 )
 
@@ -40,24 +43,33 @@ var frequencies = []FrequencyData{
 	{'Z', 0.07},
 }
 
-func normalize_freq_data() map[byte]float64 {
+func normalize_freq_data(z_spec bool) map[byte]float64 {
 	var freq_map map[byte]float64 = make(map[byte]float64, 26)
-	var space FrequencyData
-	for _, fd := range frequencies {
-		if fd.Character == byte(' ') {
-			space = fd
-		} else if fd.Character == 'Z' {
-			freq_map[fd.Character] = fd.Frequency + space.Frequency
-		} else {
-			freq_map[fd.Character] = fd.Frequency
+	if z_spec {
+		var space FrequencyData
+		for _, fd := range frequencies {
+			if fd.Character == byte(' ') {
+				space = fd
+				freq_map[fd.Character] = fd.Frequency
+				// } else if fd.Character == 'Z' {
+				// 	freq_map[fd.Character] = fd.Frequency + space.Frequency
+			} else {
+				freq_map[fd.Character] = fd.Frequency
+			}
 		}
-	}
-	delta := (100.0 - space.Frequency) / 100.0
-	for k, f := range freq_map {
-		if k != 'Z' {
-			freq_map[k] = (f * delta) / 100
-		} else {
-			freq_map[k] = f / 100.0
+		delta := (100.0 - space.Frequency) / 100.0
+		for k, f := range freq_map {
+			if k != ' ' {
+				freq_map[k] = (f * delta) / 100
+			} else {
+				freq_map[k] = f / 100.0
+			}
+		}
+	} else {
+		for _, fd := range frequencies {
+			if fd.Character != byte(' ') {
+				freq_map[fd.Character] = fd.Frequency / 100.0
+			}
 		}
 	}
 
@@ -88,8 +100,7 @@ func ceaser_shift(cipher []byte, b byte) []byte {
 	return plain
 }
 
-func ceaser_search(cipher []byte) byte {
-	fm := normalize_freq_data()
+func ceaser_search(cipher []byte, fm map[byte]float64) byte {
 	var b byte
 	var best_b byte
 	var lowest_error float64 = math.MaxFloat64
@@ -108,20 +119,64 @@ func ceaser_search(cipher []byte) byte {
 	return best_b
 }
 
-func vigenere_crack(cipher []byte) []byte {
+func Vigenere_crack(cipher []byte) []byte {
 	key_len := Kasiski_search(cipher)
 	trans := make([][]byte, key_len)
 	for i := range len(cipher) {
 		trans[i%key_len] = append(trans[i%key_len], cipher[i])
 	}
 	key := make([]byte, key_len)
+	fm := normalize_freq_data(false)
 	for i, row := range trans {
-		key[i] = ceaser_search(row)
+		key[i] = ceaser_search(row, fm)
 	}
 	return key
 }
 
-func strip_text(text []byte) []byte {
+func Vigenere_Relative(cipher []byte, key_len int) []byte {
+	key_len = Kasiski_search(cipher)
+	log.Printf("Key Len: %d\n", key_len)
+	trans := make([][]byte, key_len)
+	for i := range len(cipher) {
+		trans[i%key_len] = append(trans[i%key_len], cipher[i])
+	}
+	relative_freq := make(map[byte]float64, len(trans[0]))
+	for _, b := range trans[0] {
+		relative_freq[b] += 1.0 / float64(len(trans[0]))
+	}
+	highest := 0.0
+	var syncByte byte
+	for k, v := range relative_freq {
+		if v > highest {
+			highest = v
+			syncByte = k
+		}
+	}
+	key := make([]byte, key_len)
+	for i, row := range trans {
+		if i == 0 {
+			key[i] = 'Z'
+		} else {
+			freq := make(map[byte]float64)
+			for _, b := range row {
+				freq[b] += 1.0 / float64(len(row))
+			}
+			highest := 0.0
+			var kv byte
+			for k, v := range freq {
+				if v > highest {
+					highest = v
+					kv = k
+				}
+			}
+			shift := (((kv-syncByte)-'A')+26)%26 + 'A'
+			key[i] = shift
+		}
+	}
+	return key
+}
+
+func Strip_text(text []byte) []byte {
 	var result []byte
 	for _, b := range text {
 		if (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') {
@@ -155,7 +210,7 @@ func generate_substitution_key(cipher []byte) []byte {
 		found_freq[b] += 1.0 / float64(len(cipher))
 	}
 	// sorted_base := sortFD_slice(frequencies)
-	sorted_base := sortFD_slice(get_fd_from_map(normalize_freq_data()))
+	sorted_base := sortFD_slice(get_fd_from_map(normalize_freq_data(false)))
 	sorted_found := sortFD_slice(get_fd_from_map(found_freq))
 
 	key := make([]byte, 26)
@@ -166,4 +221,30 @@ func generate_substitution_key(cipher []byte) []byte {
 		key[k_ind] = char_base
 	}
 	return key
+}
+
+func Substitution_hill_climb(iteration int, cipher []byte) []byte {
+	fm := normalize_freq_data(false)
+	key := []byte("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	best_score := math.MaxFloat64
+	var best_key []byte = slices.Clone(key)
+	for _ = range iteration {
+		s1_ind := rand.IntN(26)
+		s2_ind := rand.IntN(26)
+		for s2_ind == s1_ind {
+			s2_ind = rand.IntN(26)
+		}
+		temp := key[s1_ind]
+		key[s1_ind] = key[s2_ind]
+		key[s2_ind] = temp
+		to_score := Substitution_cypher(key, cipher)
+		score := score_text_freq(fm, to_score)
+		if score <= best_score {
+			best_score = score
+			best_key = slices.Clone(key)
+		} else {
+			key = slices.Clone(best_key)
+		}
+	}
+	return best_key
 }
