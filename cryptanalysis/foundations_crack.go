@@ -149,11 +149,21 @@ func sortFD_slice(fd []FrequencyData) []FrequencyData {
 	return fd
 }
 
-func generate_substitution_key(cipher []byte) {
+func generate_substitution_key(cipher []byte) []byte {
 	found_freq := make(map[byte]float64, len(cipher))
 	for _, b := range cipher {
 		found_freq[b] += 1.0 / float64(len(cipher))
 	}
-	sorted_base := sortFD_slice(frequencies)
+	// sorted_base := sortFD_slice(frequencies)
+	sorted_base := sortFD_slice(get_fd_from_map(normalize_freq_data()))
 	sorted_found := sortFD_slice(get_fd_from_map(found_freq))
+
+	key := make([]byte, 26)
+	for i := range len(sorted_base) {
+		char_base := sorted_base[i].Character
+		char_found := sorted_found[i].Character
+		k_ind := char_found - 'A'
+		key[k_ind] = char_base
+	}
+	return key
 }

@@ -17,9 +17,9 @@ func TestFreqGen(t *testing.T) {
 }
 
 func TestFindSubstitutionKEy(t *testing.T) {
-	cipher, _ := os.ReadFile("foundations_hw1.txt")
-	fm := normalize_freq_data()
-	key := find_substitution_key(fm, cipher)
+	raw, _ := os.ReadFile("foundations_hw1.txt")
+	cipher := strip_text(raw)
+	key := generate_substitution_key(cipher)
 	log.Printf("Key: %s\n", key)
 	plain := Substitution_cypher(key, cipher)
 	log.Printf("Plain: %s\n", plain)
