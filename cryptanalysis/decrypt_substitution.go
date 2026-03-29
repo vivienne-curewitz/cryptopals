@@ -258,10 +258,12 @@ func Kasiski_search(cipher []byte) int {
 	best_length := 0
 	best_score := 0
 	for i := 3; i < 15; i += 1 {
-		shifted := make([]byte, len(cipher)+i)
-		copy(shifted[i:], cipher)
+		// shifted := make([]byte, len(cipher)+i)
+		// copy(shifted[i:], cipher)
+		shifted := make([]byte, len(cipher)-i)
+		copy(shifted, cipher[i:])
 		score := 0
-		for j := range len(cipher) {
+		for j := range len(shifted) {
 			if cipher[j] == shifted[j] {
 				score += 1
 			}

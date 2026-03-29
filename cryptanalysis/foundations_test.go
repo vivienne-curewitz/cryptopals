@@ -38,7 +38,7 @@ func TestFindSubstitutionKEy(t *testing.T) {
 func TestVigenereKnown(t *testing.T) {
 	raw, _ := os.ReadFile("rcypher1.txt")
 	cipher := Strip_text(raw)
-	key := Vigenere_crack(cipher)
+	key := Vigenere_crack(cipher, 0)
 	plain := Reverse_vigenere(key, cipher)
 	log.Printf("key: %s\nPlain: %s\n", key, plain)
 }
@@ -55,15 +55,15 @@ func TestCeaserSearch(t *testing.T) {
 	raw, _ := os.ReadFile("foundations_hw1.txt")
 	cipher := Strip_text(raw)
 	fm := normalize_freq_data(true)
-	b := ceaser_search(cipher, fm)
-	plain := ceaser_shift(cipher, b)
+	b := Ceaser_search(cipher, fm)
+	plain := Ceaser_shift(cipher, b)
 	log.Printf("byte: %b -- plain: %s\n", b, plain)
 }
 
 func TestVigenereCrackF(t *testing.T) {
 	raw, _ := os.ReadFile("foundations_hw1.txt")
 	cipher := Strip_text(raw)
-	key := Vigenere_crack(cipher)
+	key := Vigenere_crack(cipher, 0)
 	plain := Reverse_vigenere(key, cipher)
 	log.Printf("key: %s\nPlain: %s\n", key, plain)
 }
@@ -71,7 +71,7 @@ func TestVigenereCrackF(t *testing.T) {
 func TestVigenereThenSubstitution(t *testing.T) {
 	raw, _ := os.ReadFile("foundations_hw1.txt")
 	cipher := Strip_text(raw)
-	key := Vigenere_crack(cipher)
+	key := Vigenere_crack(cipher, 0)
 	cipher_2 := Reverse_vigenere(key, cipher)
 	key2 := generate_substitution_key(cipher_2)
 	log.Printf("Key: %s\n", key2)
@@ -85,7 +85,7 @@ func TestSubstitutionThenVigenere(t *testing.T) {
 	key2 := generate_substitution_key(cipher)
 	log.Printf("Key: %s\n", key2)
 	cipher_2 := Substitution_cypher(key2, cipher)
-	key := Vigenere_crack(cipher)
+	key := Vigenere_crack(cipher, 0)
 	plain := Reverse_vigenere(key, cipher_2)
 
 	log.Printf("Plain: %s\n", plain)

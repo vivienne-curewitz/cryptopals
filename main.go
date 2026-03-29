@@ -65,14 +65,34 @@ func parallel_substitutions(cipher []byte) []byte {
 func foundations_crack(raw []byte) {
 	cipher := cryptanalysis.Strip_text(raw)
 	// for i := 3; i <= 10; i += 1 {
-	vigenere_key := cryptanalysis.Vigenere_crack(cipher)
-	// vigenere_key := cryptanalysis.Vigenere_Relative(cipher, 14)
+	vigenere_key := cryptanalysis.Vigenere_crack(cipher, 0)
+	// vigenere_key := cryptanalysis.Vigenere_Relative(cipher, 7)
+	log.Printf("Vigenere Key: %s\n", vigenere_key)
 	vig_cipher := cryptanalysis.Reverse_vigenere(vigenere_key, cipher)
-	sub_key := parallel_substitutions(vig_cipher)
-	sub_text := cryptanalysis.Substitution_cypher(sub_key, vig_cipher)
-	log.Printf("Sub Key: %s\n", sub_key)
-	log.Printf("Plain?: %s\n", sub_text)
+	// assume substitution
+	// sub_key := parallel_substitutions(vig_cipher)
+	// sub_text := cryptanalysis.Substitution_cypher(sub_key, vig_cipher)
+	// log.Printf("Sub Key: %s\n", sub_key)
+	// log.Printf("Plain?: %s\n", sub_text)
 	// }
+	// assume shift
+	fm := cryptanalysis.Normalize_freq_data(true)
+	shift := cryptanalysis.Ceaser_search(vig_cipher, fm)
+	log.Printf("Shift: %s\n", shift)
+	plain := cryptanalysis.Ceaser_shift(vig_cipher, shift)
+	log.Printf("Plain: %s\n", plain)
+}
+
+func foundations_key_search(raw []byte) {
+	cipher := cryptanalysis.Strip_text(raw)
+	// var shift byte = 'A'
+	for kl := range 26 {
+		// c2 := slices.Clone(cipher)
+		// c2 = cryptanalysis.Ceaser_shift(c2, shift)
+		// shift += 1
+		vk := cryptanalysis.Vigenere_crack(cipher, kl)
+		log.Printf("Shift: %d :: Key: %s\n", kl, vk)
+	}
 }
 
 func test_sub_vig_crack() {
@@ -83,8 +103,10 @@ func test_sub_vig_crack() {
 }
 
 func main() {
-	subsitution_crack()
-	// raw, _ := os.ReadFile("cryptanalysis/foundations_hw1.txt")
-	// foundations_crack(raw)
+	// subsitution_crack()
+	raw, _ := os.ReadFile("cryptanalysis/foundations_hw1.txt")
+	// raw, _ := os.ReadFile("cryptanalysis/ncypher1.txt")
+	// foundations_key_search(raw)
+	foundations_crack(raw)
 	// test_sub_vig_crack()
 }

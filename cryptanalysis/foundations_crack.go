@@ -43,6 +43,10 @@ var frequencies = []FrequencyData{
 	{'Z', 0.07},
 }
 
+func Normalize_freq_data(z_spec bool) map[byte]float64 {
+	return normalize_freq_data(z_spec)
+}
+
 func normalize_freq_data(z_spec bool) map[byte]float64 {
 	var freq_map map[byte]float64 = make(map[byte]float64, 26)
 	if z_spec {
@@ -91,7 +95,7 @@ func score_text_freq(frequency_map map[byte]float64, decrypted []byte) float64 {
 	return mean_squared_error
 }
 
-func ceaser_shift(cipher []byte, b byte) []byte {
+func Ceaser_shift(cipher []byte, b byte) []byte {
 	var plain []byte = make([]byte, len(cipher))
 	shift := b - 'A'
 	for i := range len(cipher) {
@@ -100,7 +104,7 @@ func ceaser_shift(cipher []byte, b byte) []byte {
 	return plain
 }
 
-func ceaser_search(cipher []byte, fm map[byte]float64) byte {
+func Ceaser_search(cipher []byte, fm map[byte]float64) byte {
 	var b byte
 	var best_b byte
 	var lowest_error float64 = math.MaxFloat64
@@ -119,8 +123,10 @@ func ceaser_search(cipher []byte, fm map[byte]float64) byte {
 	return best_b
 }
 
-func Vigenere_crack(cipher []byte) []byte {
-	key_len := Kasiski_search(cipher)
+func Vigenere_crack(cipher []byte, key_len int) []byte {
+	if key_len == 0 {
+		key_len = Kasiski_search(cipher)
+	}
 	trans := make([][]byte, key_len)
 	for i := range len(cipher) {
 		trans[i%key_len] = append(trans[i%key_len], cipher[i])
@@ -128,13 +134,13 @@ func Vigenere_crack(cipher []byte) []byte {
 	key := make([]byte, key_len)
 	fm := normalize_freq_data(false)
 	for i, row := range trans {
-		key[i] = ceaser_search(row, fm)
+		key[i] = Ceaser_search(row, fm)
 	}
 	return key
 }
 
 func Vigenere_Relative(cipher []byte, key_len int) []byte {
-	key_len = Kasiski_search(cipher)
+	// key_len = Kasiski_search(cipher)
 	log.Printf("Key Len: %d\n", key_len)
 	trans := make([][]byte, key_len)
 	for i := range len(cipher) {
